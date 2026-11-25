@@ -1,0 +1,31 @@
+name: Build PHYSIX NumWorks app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi nodejs npm
+      - name: Restore app icon
+        run: base64 -d src/icon.png.base64 > src/icon.png
+      - name: Compile PHYSIX
+        run: make clean build
+      - name: Upload .nwa
+        uses: actions/upload-artifact@v4
+        with:
+          name: PHYSIX-NumWorks-nwa
+          path: output/PHYSIX.nwa
+          if-no-files-found: error
+          retention-days: 30
