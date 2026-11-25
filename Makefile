@@ -1,28 +1,54 @@
+Q ?= @
 CC = arm-none-eabi-gcc
 BUILD_DIR = output
 NWLINK = npx --yes -- nwlink@0.0.16
+LINK_GC = 1
+LTO = 1
 
-src = src/main.c
-CFLAGS = -std=c99 $(shell $(NWLINK) eadk-cflags) -Os -Wall -Wextra
+define object_for
+$(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(basename $(1))))
+endef
+
+src = $(addprefix src/,\
+  main.c \
+)
+
+CFLAGS = -std=c99
+CFLAGS += $(shell $(NWLINK) eadk-cflags)
+CFLAGS += -Os -Wall -ggdb
 LDFLAGS = -Wl,--relocatable -nostartfiles --specs=nano.specs
-CFLAGS += -ffunction-sections -fdata-sections
-LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level -Wl,--gc-sections
 
-.PHONY: build run clean
+ifeq ($(LINK_GC),1)
+CFLAGS += -fdata-sections -ffunction-sections
+LDFLAGS += -Wl,-e,main -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level
+LDFLAGS += -Wl,--gc-sections
+endif
+
+ifeq ($(LTO),1)
+CFLAGS += -flto -fno-fat-lto-objects -fwhole-program -fvisibility=internal
+LDFLAGS += -flinker-output=nolto-rel
+endif
+
+.PHONY: build
 build: $(BUILD_DIR)/PHYSIX.nwa
 
-$(BUILD_DIR)/main.o: $(src)
-	mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILD_DIR)/PHYSIX.nwa: $(call object_for,$(src)) $(BUILD_DIR)/icon.o
+	@echo "LD      $@"
+	$(Q) $(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
+
+$(addprefix $(BUILD_DIR)/,%.o): %.c | $(BUILD_DIR)
+	@echo "CC      $^"
+	$(Q) $(CC) $(CFLAGS) -c $^ -o $@
 
 $(BUILD_DIR)/icon.o: src/icon.png
-	$(NWLINK) png-icon-o $< $@
+	@echo "ICON    $<"
+	$(Q) $(NWLINK) png-icon-o $< $@
 
-$(BUILD_DIR)/PHYSIX.nwa: $(BUILD_DIR)/main.o $(BUILD_DIR)/icon.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
+.PRECIOUS: $(BUILD_DIR)
+$(BUILD_DIR):
+	$(Q) mkdir -p $@/src
 
-run: build
-	$(NWLINK) install-nwa $(BUILD_DIR)/PHYSIX.nwa
-
+.PHONY: clean
 clean:
-	rm -rf $(BUILD_DIR)
+	@echo "CLEAN"
+	$(Q) rm -rf $(BUILD_DIR)
