@@ -1,6 +1,6 @@
 CC = arm-none-eabi-gcc
 BUILD_DIR = output
-NWLINK = nwlink
+NWLINK = npx --yes -- nwlink@0.0.16
 
 src = src/main.c
 CFLAGS = -std=c99 $(shell $(NWLINK) eadk-cflags) -Os -Wall -Wextra
