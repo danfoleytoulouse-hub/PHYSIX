@@ -18,8 +18,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y make gcc-arm-none-eabi binutils-arm-none-eabi libnewlib-arm-none-eabi nodejs npm
-          sudo npm install --global nwlink@0.0.16
-          nwlink eadk-cflags
+          npx --yes -- nwlink@0.0.16 eadk-cflags
       - name: Restore app icon
         run: base64 -d src/icon.png.base64 > src/icon.png
       - name: Compile PHYSIX
